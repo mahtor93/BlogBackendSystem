@@ -23,5 +23,43 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  posts Post[]
+
   @@map("users")
+}
+
+
+model Post {
+  id String @id @default(uuid())
+  title String
+  content String @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  media Media[]
+
+  @@index([authorId])
+}
+
+model Media {
+  id   String @id @default(uuid())
+  type MediaType
+  url  String
+  position Int? //orden de la galeria
+  isHeader Boolean @default(false)
+
+  postId String
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  @@index([postId])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  GIF
 }

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRouter from './src/routes/auth.router.js';
 import meRouter from './src/routes/me.router.js';
+import usersRouter from './src/routes/users.router.js';
 
 const apiVersion ="v1"
 
@@ -22,6 +23,7 @@ app.get('/', (req,res) =>{
 
 app.use(`/api/${apiVersion}/auth`, authRouter);
 app.use(`/api/${apiVersion}/me`, meRouter);
+app.use(`/api/${apiVersion}/users`, usersRouter);
 
 app.use((req,res) =>{
     res.status(404).json({ message: 'Route not found' });
