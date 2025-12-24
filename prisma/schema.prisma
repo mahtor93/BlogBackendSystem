@@ -22,7 +22,10 @@ model User {
   bio       String?  @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
+  
+  avatarId String?  @unique @default(uuid())
+  avatar   Media?   @relation("UserAvatar", fields: [avatarId], references: [id])
+  
   posts Post[]
 
   @@map("users")
@@ -53,6 +56,8 @@ model Media {
 
   postId String
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userAvatar User?  @relation("UserAvatar")
 
   createdAt DateTime @default(now())
   @@index([postId])
