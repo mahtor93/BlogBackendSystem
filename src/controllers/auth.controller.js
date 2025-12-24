@@ -45,7 +45,6 @@ const register = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 const login = async (req, res) => {
   try {
     const errors = validationResult(req);
