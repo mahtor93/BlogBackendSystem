@@ -27,6 +27,7 @@ model User {
   avatar   Media?   @relation("UserAvatar", fields: [avatarId], references: [id])
   
   posts Post[]
+  tags  Tag[]
 
   @@map("users")
 }
@@ -43,8 +44,34 @@ model Post {
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   media Media[]
+  tags  PostTag[]
 
   @@index([authorId])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  posts     PostTag[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Media {
