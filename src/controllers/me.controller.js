@@ -49,3 +49,27 @@ export async function updatePassword(req, res) {
         res.status(500).json({ message: 'Server Error' });
     }
 }
+
+export async function updateAvatar(req,res){
+    try{
+        const { avatarUrl } = req.body;
+        const userId = req.user.id;
+
+        if(!avatarUrl){
+            return res.status(400).json({ message: 'Avatar URL is required.' });
+        }
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { avatarUrl },
+            select:{
+                id:true,
+                username:true,
+                avatarUrl:true,
+            }
+        });
+        res.json({ message: 'Avatar updated successfully.', user });
+    }catch(error){
+        console.error('Update Avatar Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+}

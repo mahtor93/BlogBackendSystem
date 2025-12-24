@@ -8,6 +8,7 @@ export async function getUserByName(req, res) {
       select: {
         name: true,
         bio: true,
+        avatarId: true,
       },
     });
     if (!user) {
