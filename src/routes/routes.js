@@ -9,7 +9,7 @@ const router = Router();
 router.use('/auth', authRouter);
 router.use('/me', meRouter);
 router.use('/users', usersRouter);
-router.use('/posts', postRouter);
+router.use('/post', postRouter);
 
 
 export default router;
