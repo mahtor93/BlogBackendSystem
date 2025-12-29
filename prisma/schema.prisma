@@ -39,6 +39,9 @@ model Post {
   content String @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  publishedAt DateTime?
+
+  status PostStatus @default(DRAFT)
 
   authorId String
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -47,6 +50,15 @@ model Post {
   tags  PostTag[]
 
   @@index([authorId])
+  @@index([status])
+
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  PRIVATE
 }
 
 model PostTag {
