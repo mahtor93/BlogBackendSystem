@@ -8,7 +8,8 @@ import {
     getPostList,
     updatePostTags,
     updatePostMedia,
-    updatePost } from "../controllers/posts.controller.js";
+    updatePost, 
+    getPostById} from "../controllers/posts.controller.js";
 import authenticateToken from "../middlewares/auth.js";
 
 const postRouter = Router();
@@ -19,6 +20,7 @@ postPrivateRouter.use(authenticateToken);
 
 /* RUTAS PUBLICAS */
 postPublicRouter.get("/published/:userId", getPublishedPostsByUser); //
+postPublicRouter.get("/:id", getPostById); //
 
 /* RUTAS PRIVADAS */
 postPrivateRouter.post("/", createPost); //
@@ -26,9 +28,9 @@ postPrivateRouter.post("/media/:id", addPostMedia);
 postPrivateRouter.post("/tags/:id", addPostTags); //
 
 postPrivateRouter.patch("/status/:id", updatePostStatus); //
-postPrivateRouter.patch("/tags/:id", updatePostTags);
+postPrivateRouter.patch("/tags/:id", updatePostTags); //
 postPrivateRouter.patch("/media/:id", updatePostMedia);
-postPrivateRouter.patch("/:id", updatePost);
+postPrivateRouter.patch("/:id", updatePost); //
 
 postPrivateRouter.get("/", getPostList); //
 

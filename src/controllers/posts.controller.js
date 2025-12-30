@@ -417,5 +417,49 @@ export async function getPublishedPostsByUser(req, res) {
   }
 }
 
-export async function getPostById(req, res) {}
+export async function getPostById(req, res) {
+  try {
+    const { id } = req.params;
+
+    const post = await prisma.post.findFirst({
+      where: {
+        id,
+        status: "PUBLISHED",
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        publishedAt: true,
+        media: {
+          orderBy: { position: "asc" },
+        },
+        tags: {
+          select: {
+            tag: {
+              select: { name: true },
+            },
+          },
+        },
+        author: {
+          select: {
+            username: true,
+          },
+        },
+      },
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    res.json({
+      ...post,
+      tags: post.tags.map(t => t.tag.name),
+    });
+  } catch (error) {
+    console.error("Get Post Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
 
