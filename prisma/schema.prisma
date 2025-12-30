@@ -13,6 +13,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  plan      String   @default("FREE")
+  createdAt DateTime @default(now())
+
+  users   User[]
+  domains Domain[]
+  posts   Post[]
+  tags    Tag[]
+
+  @@map("tenants")
+}
+
 model User {
   id        String      @id @default(uuid())
   email     String   @unique
@@ -20,23 +34,73 @@ model User {
   password  String
   name      String
   bio       String?  @db.Text
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   avatarId String?  @unique @default(uuid())
   avatar   Media?   @relation("UserAvatar", fields: [avatarId], references: [id])
   
   posts Post[]
   tags  Tag[]
 
+
+  @@index([tenantId])
   @@map("users")
 }
 
+model Domain {
+  id       String @id @default(uuid())
+  domain   String @unique
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  blogId   String
+  blog     Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+
+  @@index([tenantId])
+  @@index([blogId])
+  @@map("domains")
+}
+
+model Blog {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String
+  description String?  @db.Text
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts       Post[]
+  tags        Tag[]
+  domains     Domain[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("blogs")
+}
 
 model Post {
   id String @id @default(uuid())
   title String
   content String @db.Text
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  blogId   String
+  blog     Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   publishedAt DateTime?
@@ -48,10 +112,11 @@ model Post {
 
   media Media[]
   tags  PostTag[]
+  
 
-  @@index([authorId])
-  @@index([status])
+  @@index([blogId, status])
   @@index([authorId, status])
+  @@index([tenantId, status])
 
 }
 
@@ -76,6 +141,13 @@ model PostTag {
 model Tag {
   id        String   @id @default(uuid())
   name      String
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  blogId    String
+  blog      Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -83,8 +155,9 @@ model Tag {
 
   createdAt DateTime @default(now())
 
-  @@unique([userId, name])
-  @@index([userId])
+  @@unique([blogId, name])
+  @@index([tenantId])
+  @@index([blogId])
 }
 
 model Media {

@@ -21,6 +21,7 @@ export async function createPost(req, res) {
     res.status(500).json({ message: "Server Error" });
   }
 }
+
 export async function addPostMedia(req, res) {
   try {
     const postId = req.params.id;
