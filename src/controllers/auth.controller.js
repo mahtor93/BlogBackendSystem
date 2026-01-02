@@ -1,85 +1,81 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { validationResult } from "express-validator";
 import prisma from "../config/database.js";
 
-const register = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    const { username, email, name, password } = req.body;
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username }],
-      },
-    });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "Username or Email already in use." });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({
-      data: {
-        username,
-        email,
-        name,
-        password: hashedPassword,
-      },
-    });
-
-    const token = jwt.sign(
-      { userId: newUser.id, username: newUser.username },
-      process.env.JWT_SECRET,
-      { expiresIn: "3d" }
-    );
-
-    res
-      .status(201)
-      .json({ message: "User registered successfully", userId: newUser.id,token });
-  } catch (error) {
-    console.error("Registration Error:", error);
-    res.status(500).json({ message: "Server Error" });
-  }
-};
 const login = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { username, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { username } });
+    const tenantId = req.context?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant context required" });
+    }
+
+    // 1. Usuario global
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username },
+          { email: username }, // permite login con email
+        ],
+      },
+    });
+
     if (!user) {
-      return res.status(401).json({ message: "Invalid username or password." });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid username or password." });
+    // 2. Password
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // 3. Relación tenant-user + rol
+    const tenantUser = await prisma.tenantUser.findUnique({
+      where: {
+        tenantId_userId: {
+          tenantId,
+          userId: user.id,
+        },
+      },
+      include: {
+        role: {
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!tenantUser) {
+      return res
+        .status(403)
+        .json({ message: "User does not belong to this tenant" });
+    }
+
+    // 4. Token contextual
     const token = jwt.sign(
-      { userId: user.id, username: user.username },
+      {
+        userId: user.id,
+        tenantId,
+        role: tenantUser.role.name,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "3d" }
     );
 
     res.json({
-      message: "Login successful",
       token,
-      userId: user.id,
-      username: user.username,
-      email: user.email,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: tenantUser.role.name,
+      },
     });
-  } catch (error) {
-    console.error("Login Error:", error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Server error AU-LG001" });
   }
 };
 
-export { register, login };
+export { login };

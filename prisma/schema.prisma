@@ -1,9 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// ======================
+// Prisma config
+// ======================
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +10,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ======================
+// Core: Tenant & Users
+// ======================
 model Tenant {
   id        String   @id @default(uuid())
   name      String
   plan      String   @default("FREE")
   createdAt DateTime @default(now())
 
-  tenantUsers   TenantUser[]
-  users   User[]
-  blogs   Blog[]
-  domains Domain[]
+  tenantUsers TenantUser[]
+  blogs       Blog[]
+  domains     Domain[]
+  posts       Post[]
+  tags        Tag[]
+  roles       UserRole[]
+
+  @@map("tenants")
+}
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  username String @unique
+  password String
+  name     String
+  bio      String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  avatarId String? @unique
+  avatar   Media?  @relation("UserAvatar", fields: [avatarId], references: [id])
+
+  tenants TenantUser[]
   posts   Post[]
   tags    Tag[]
 
-  @@map("tenants")
+  @@map("users")
+}
+
+model UserRole {
+  id       String @id @default(uuid())
+  name     String // OWNER | ADMIN | EDITOR | AUTHOR | BLANK
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  users TenantUser[]
+
+  @@unique([tenantId, name])
 }
 
 model TenantUser {
@@ -38,7 +71,8 @@ model TenantUser {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  role UserRole @default(BLANK)
+  roleId String
+  role   UserRole @relation(fields: [roleId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -47,56 +81,9 @@ model TenantUser {
   @@index([userId])
 }
 
-model User {
-  id       String  @id @default(uuid())
-  email    String  @unique
-  username String  @unique
-  password String
-  name     String
-  bio      String? @db.Text
-
-  role UserRole @default(BLANK)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  avatarId String? @unique
-  avatar   Media?  @relation("UserAvatar", fields: [avatarId], references: [id])
-
-  posts   Post[]
-  tags    Tag[]
-  tenants TenantUser[]
-
-  @@index([tenantId])
-  @@map("users")
-}
-
-enum UserRole {
-  OWNER
-  ADMIN
-  EDITOR
-  AUTHOR
-  BLANK
-}
-
-model Domain {
-  id     String @id @default(uuid())
-  domain String @unique
-
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  blogId String
-  blog   Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId])
-  @@index([blogId])
-  @@map("domains")
-}
-
+// ======================
+// Blogs & Domains
+// ======================
 model Blog {
   id          String  @id @default(uuid())
   name        String
@@ -119,6 +106,24 @@ model Blog {
   @@map("blogs")
 }
 
+model Domain {
+  id     String @id @default(uuid())
+  domain String @unique
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  blogId String
+  blog   Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([blogId])
+  @@map("domains")
+}
+
+// ======================
+// Posts
+// ======================
 model Post {
   id      String @id @default(uuid())
   title   String
@@ -130,14 +135,14 @@ model Post {
   blogId String
   blog   Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  publishedAt DateTime?
-
-  status PostStatus @default(DRAFT)
-
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  status       PostStatus @default(DRAFT)
+  publishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   media Media[]
   tags  PostTag[]
@@ -154,17 +159,9 @@ enum PostStatus {
   PRIVATE
 }
 
-model PostTag {
-  postId String
-  tagId  String
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([postId, tagId])
-  @@index([tagId])
-}
-
+// ======================
+// Tags
+// ======================
 model Tag {
   id   String @id @default(uuid())
   name String
@@ -187,11 +184,25 @@ model Tag {
   @@index([blogId])
 }
 
+model PostTag {
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+}
+
+// ======================
+// Media
+// ======================
 model Media {
   id       String    @id @default(uuid())
   type     MediaType
   url      String
-  position Int? //orden de la galeria
+  position Int?
   isHeader Boolean   @default(false)
 
   postId String

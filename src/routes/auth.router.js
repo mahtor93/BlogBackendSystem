@@ -1,11 +1,12 @@
 import express, { Router } from "express";
-import { register, login } from "../controllers/auth.controller.js";
-import { registerValidation, loginValidation } from "../middlewares/validators.js";
+import {  login } from "../controllers/auth.controller.js";
+import { loginValidation } from "../middlewares/validators.js";
+import resolveDomainContext from "../middlewares/resolveDomainContext.js";
 
 
 const authRouter = express.Router();
 
-authRouter.post('/register', registerValidation, register);
-authRouter.post('/login', loginValidation, login);
+
+authRouter.post('/login', loginValidation, resolveDomainContext, login);
 
 export default authRouter;
