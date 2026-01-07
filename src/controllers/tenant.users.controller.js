@@ -127,11 +127,12 @@ export async function listUsers(req, res) {
 }
 export async function getUserByUsername(req, res) {
   try {
-    const { username } = req.params;
+    let { username } = req.params;
     const tenantId = req.context.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required." });
     }
+    username = username?.toLowerCase();
     const tenantUser = await prisma.tenantUser.findFirst({
       where: { tenantId, user: { username } },
       include: {
