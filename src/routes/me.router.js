@@ -28,7 +28,7 @@ meRouter.use(requireTenantMatch);
 // Rutas de identidad propia
 
 meRouter.get("/", getMe);
-meRouter.patch("/", updateMe);
+meRouter.put("/", updateMe);
 meRouter.patch("/password", updatePassword);
 meRouter.delete("/", deleteMe);
 

@@ -3,12 +3,13 @@ import prisma from "../config/database.js";
 
 export async function getMe(req, res) {
   try {
-    const { userId, tenantId } = req.context;
+    const { tenantId } = req.context;
+    const { id } = req.user;
 
     // 1. Validar pertenencia al tenant
     const tenantUser = await prisma.tenantUser.findFirst({
       where: {
-        userId,
+        userId: id,
         tenantId,
         //deletedAt: null, // si usas soft delete
       },
@@ -30,6 +31,8 @@ export async function getMe(req, res) {
       },
     });
 
+    console.log("Fetched Tenant User for getMe:", tenantUser);
+
     if (!tenantUser) {
       return res.status(404).json({ message: "User not found in tenant." });
     }
@@ -44,13 +47,13 @@ export async function getMe(req, res) {
     res.status(500).json({ message: "Server Error ME-001" });
   }
 }
-
 export async function updateMe(req, res) {
   try {
-    const { userId, tenantId } = req.context;
-    const { name, bio } = req.body;
+    const {  tenantId } = req.context;
+    const { id } = req.user;
+    const { name, bio, email, username } = req.body;
 
-    if (!userId || !tenantId) {
+    if (!id || !tenantId) {
       return res.status(400).json({ message: "Invalid context." });
     }
 
@@ -58,8 +61,8 @@ export async function updateMe(req, res) {
     const tenantUser = await prisma.tenantUser.findFirst({
       where: {
         tenantId,
-        userId,
-        deletedAt: null, // solo si implementas soft delete aquí
+        userId: id,
+        // deletedAt: null, // solo si implementas soft delete aquí
       },
       select: { userId: true },
     });
@@ -72,10 +75,12 @@ export async function updateMe(req, res) {
     const data = {};
     if (name !== undefined) data.name = name;
     if (bio !== undefined) data.bio = bio;
+    if (email !== undefined) data.email = email;
+    if (username !== undefined) data.username = username;
 
     // 3. Actualizar User
     await prisma.user.update({
-      where: { id: userId },
+      where: { id },
       data,
     });
 
@@ -85,7 +90,6 @@ export async function updateMe(req, res) {
     res.status(500).json({ message: "Server Error ME-UPD-001" });
   }
 }
-
 export async function updatePassword(req, res) {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -143,7 +147,6 @@ export async function updatePassword(req, res) {
     res.status(500).json({ message: "Server Error ME-PW-001" });
   }
 }
-
 export async function updateAvatar(req, res) {
   try {
     const { avatarId } = req.body;
@@ -197,7 +200,6 @@ export async function updateAvatar(req, res) {
     res.status(500).json({ message: "Server Error ME-AV-001" });
   }
 }
-
 export async function deleteMe(req, res) {
   try {
     const { userId, tenantId } = req.context;
