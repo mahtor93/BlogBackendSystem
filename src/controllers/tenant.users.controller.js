@@ -1,12 +1,15 @@
 import bcrypt from "bcrypt";
 import prisma from "../config/database.js";
 import { selectFields } from "express-validator/lib/field-selection.js";
+import e from "cors";
 
 export async function createUser(req, res) {
   try {
-    const { username, email, password, name } = req.body;
+    let { username, email, password, name } = req.body;
     const tenantId = req.context?.tenantId;
 
+    username = username?.toLowerCase();
+    email = email?.toLowerCase();
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant context required." });
     }
@@ -214,8 +217,11 @@ export async function getUserById(req, res) {
 export async function updateUser(req, res) {
   try {
     const { id } = req.params;
-    const { name, bio, avatarId, password, email, } = req.body;
+    let { name, bio, avatarId, password, email, username } = req.body;
     const tenantId = req.context.tenantId;
+
+    email = email?.toLowerCase();
+    username = username?.toLowerCase();
 
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required." });
@@ -236,6 +242,7 @@ export async function updateUser(req, res) {
     }
 
     const data = {};
+    if (username !== undefined) data.username = username;
     if (name !== undefined) data.name = name;
     if (bio !== undefined) data.bio = bio;
     if (avatarId !== undefined) data.avatarId = avatarId;

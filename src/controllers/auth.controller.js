@@ -2,10 +2,14 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../config/database.js";
 
+
 const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    let { email, username, password } = req.body;
     const tenantId = req.context?.tenantId;
+
+    username = username?.toLowerCase();
+    email = email?.toLowerCase();
 
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant context required" });
@@ -16,7 +20,7 @@ const login = async (req, res) => {
       where: {
         OR: [
           { username },
-          { email: username }, // permite login con email
+          { email }, // permite login con email
         ],
       },
     });
