@@ -25,6 +25,29 @@ const login = async (req, res) => {
       },
     });
 
+    const TenantUser = await prisma.tenantUser.findFirst({
+      where: {
+        tenantId,
+        user:{
+          id: user?.id,
+          deletedAt: null, // si usas soft delete
+        }
+      },
+      include:{
+        role:{
+          select:{ name:true }
+        }
+      }
+    });
+
+    console.log("Fetched Tenant User for login:", TenantUser);
+
+    if (!TenantUser) {
+      return res
+        .status(403)
+        .json({ message: "User does not belong to this tenant" });
+    }
+
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -55,6 +78,11 @@ const login = async (req, res) => {
         .status(403)
         .json({ message: "User does not belong to this tenant" });
     }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
 
     // 4. Token contextual
     const token = jwt.sign(

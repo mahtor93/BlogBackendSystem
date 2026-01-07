@@ -29,7 +29,7 @@ meRouter.use(requireTenantMatch);
 
 meRouter.get("/", getMe);
 meRouter.put("/", updateMe);
-meRouter.patch("/password", updatePassword);
+meRouter.put("/password", updatePassword);
 meRouter.delete("/", deleteMe);
 
 export default meRouter;

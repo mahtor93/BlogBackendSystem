@@ -11,7 +11,9 @@ export async function getMe(req, res) {
       where: {
         userId: id,
         tenantId,
-        //deletedAt: null, // si usas soft delete
+        user: {
+          deletedAt: null,
+        },
       },
       select: {
         user: {
@@ -23,6 +25,8 @@ export async function getMe(req, res) {
             bio: true,
             avatarId: true,
             createdAt: true,
+            lastLogin: true,
+            deletedAt: true,
           },
         },
         role: {
@@ -49,7 +53,7 @@ export async function getMe(req, res) {
 }
 export async function updateMe(req, res) {
   try {
-    const {  tenantId } = req.context;
+    const { tenantId } = req.context;
     const { id } = req.user;
     const { name, bio, email, username } = req.body;
 
@@ -62,7 +66,9 @@ export async function updateMe(req, res) {
       where: {
         tenantId,
         userId: id,
-        // deletedAt: null, // solo si implementas soft delete aquí
+        user: {
+          deletedAt: null,
+        },
       },
       select: { userId: true },
     });
@@ -93,7 +99,8 @@ export async function updateMe(req, res) {
 export async function updatePassword(req, res) {
   try {
     const { currentPassword, newPassword } = req.body;
-    const { userId, tenantId } = req.context;
+    const { tenantId } = req.context;
+    const { id } = req.user;
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
@@ -104,9 +111,11 @@ export async function updatePassword(req, res) {
     // 1. Validar pertenencia al tenant
     const tenantUser = await prisma.tenantUser.findFirst({
       where: {
-        userId,
+        userId: id,
         tenantId,
-        deletedAt: null, // si usas soft delete
+        user: {
+          deletedAt: null
+        }
       },
       select: { userId: true },
     });
@@ -117,7 +126,7 @@ export async function updatePassword(req, res) {
 
     // 2. Obtener password actual
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id },
       select: { password: true },
     });
 
@@ -137,7 +146,7 @@ export async function updatePassword(req, res) {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { id },
       data: { password: hashedPassword },
     });
 
@@ -202,12 +211,25 @@ export async function updateAvatar(req, res) {
 }
 export async function deleteMe(req, res) {
   try {
-    const { userId, tenantId } = req.context;
+    const { tenantId } = req.context;
+    const { id: userId } = req.user;
 
-    const deleted = await prisma.tenantUser.updateMany({
+    // 1. Validar pertenencia al tenant
+    const tenantUser = await prisma.tenantUser.findFirst({
       where: {
         userId,
         tenantId,
+      },
+      select: { userId: true },
+    });
+
+    if (!tenantUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const deleted = await prisma.user.updateMany({
+      where: {
+        id: userId,
         deletedAt: null,
       },
       data: {
