@@ -1,3 +1,15 @@
+# Instanciar el sistema
+## Variables de entorno
+* DATABASE_URL
+  - La dirección a la que apuntará nodejs. Espera unabase de datos postgresql.
+  - La url debe tener el siguiente formato
+    - ```postgresq://postgres:password@dominio:5432/nombreBaseDeDatos?schema=public```
+* JWT_SECRET
+  - un string para cifrar el token.
+* PORT
+  - Puerto en el que se entrega el servicio del sistema
+
+
 # Sobre las jerarquías del sistema
 El sistema está basado en una serie de instancias anidadas una dentro de la otra de manera jerarquica.
 El siguiente es una lista en orden desde el conjunto global hasta lo más particular.
@@ -45,9 +57,9 @@ Usuario creado con el rol inicial BLANK, exceptuando el creador del tenant, que 
 PAYLOAD ESPERADO
 ```
 {
-  "tenantName": "string",
-  "username": "string",
-  "email": "admin@miempresa.com",
+  "tenantName": "name",
+  "username": "username",
+  "email": "username@name.cl",
   "password": "********"
 }
 ```
@@ -69,4 +81,25 @@ RESPUESTA:
 ```
 # Login de usuario
 
-* []
+* [POST] /api/v1/auth/login
+
+PAYLOAD ESPERADO
+```
+{
+  "username":"username o email",
+  "password":"password"
+}
+```
+
+RESPUESTA:
+```
+{
+    "token": "generated_token",
+    "user": {
+        "id": "uuid-user",
+        "username": "username",
+        "name": "name username",
+        "role": "ROLE"
+    }
+}
+```
