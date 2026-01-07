@@ -41,11 +41,11 @@ const authenticateToken = async (req, res, next) => {
         message: "User is not associated with this tenant",
       });
     }
-
+    console.log("Authenticated Tenant User:", tenantUser);
     req.user = {
       id: tenantUser.user.id,
       tenantId: tenantUser.tenantId,
-      roleName: tenantUser.user.role.name,
+      roleName: tenantUser.role.name,
       username: tenantUser.user.username,
       email: tenantUser.user.email,
       name: tenantUser.user.name,

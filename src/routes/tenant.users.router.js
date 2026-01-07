@@ -34,7 +34,7 @@ usersRouter.get(
 );
 
 usersRouter
-  .route("/:userId")
+  .route("/:id")
   .get(requireRole(ROLES), getUserById)
   .put(requireRole(ROLES), updateUser)
   .delete(requireRole(["OWNER"]), deleteUser);

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import prisma from "../config/database.js";
+import { selectFields } from "express-validator/lib/field-selection.js";
 
 export async function createUser(req, res) {
   try {
@@ -86,7 +87,7 @@ export async function listUsers(req, res) {
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required." });
     }
-    const users = await prisma.user.findMany({
+    const tenantUsers = await prisma.tenantUser.findMany({
       where: { tenantId },
       include: {
         user: {
@@ -95,21 +96,25 @@ export async function listUsers(req, res) {
             username: true,
             email: true,
             name: true,
-            role: true,
             createdAt: true,
+          },
+        },
+        role: {
+          select: {
+            name: true,
           },
         },
       },
     });
 
     res.json(
-      users.map((u) => ({
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        createdAt: u.createdAt,
+      tenantUsers.map((tu) => ({
+        id: tu.user.id,
+        username: tu.user.username,
+        email: tu.user.email,
+        name: tu.user.name,
+        role: tu.role.name,
+        createdAt: tu.user.createdAt,
       }))
     );
   } catch (error) {
@@ -124,19 +129,39 @@ export async function getUserByUsername(req, res) {
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required." });
     }
-    const user = await prisma.user.findUnique({
-      where: { username, tenantId },
-      select: {
-        name: true,
-        bio: true,
-        avatarId: true,
+    const tenantUser = await prisma.tenantUser.findFirst({
+      where: { tenantId, user: { username } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            bio: true,
+            avatarId: true,
+            createdAt: true,
+          },
+        },
+        role: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
-    if (!user) {
+    if (!tenantUser) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    res.json(user);
+    res.json({
+      id: tenantUser.user.id,
+      username: tenantUser.user.username,
+      name: tenantUser.user.name,
+      bio: tenantUser.user.bio,
+      avatarId: tenantUser.user.avatarId,
+      role: tenantUser.role.name,
+      tenantId: tenantUser.tenantId,
+    });
   } catch (error) {
     console.error("Get User By Name Error:", error);
     res.status(500).json({ message: "Server Error T-US005" });
@@ -149,18 +174,38 @@ export async function getUserById(req, res) {
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required." });
     }
-    const user = await prisma.user.findUnique({
-      where: { id, tenantId },
-      select: {
-        name: true,
-        bio: true,
-        avatarId: true,
+    const tenantUser = await prisma.tenantUser.findFirst({
+      where: { tenantId, userId: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            bio: true,
+            avatarId: true,
+            createdAt: true,
+          },
+        },
+        role: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
-    if (!user) {
+    if (!tenantUser) {
       return res.status(404).json({ message: "User not found." });
     }
-    res.json(user);
+    res.json({
+      id: tenantUser.user.id,
+      username: tenantUser.user.username,
+      name: tenantUser.user.name,
+      bio: tenantUser.user.bio,
+      avatarId: tenantUser.user.avatarId,
+      role: tenantUser.role.name,
+      tenantId: tenantUser.tenantId,
+    });
   } catch (error) {
     console.error("Get User By ID Error:", error);
     res.status(500).json({ message: "Server Error T-US006" });
@@ -169,28 +214,54 @@ export async function getUserById(req, res) {
 export async function updateUser(req, res) {
   try {
     const { id } = req.params;
-    const { name, bio, avatarId, password } = req.body;
+    const { name, bio, avatarId, password, email, } = req.body;
     const tenantId = req.context.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required." });
     }
 
+    const tenantUser = await prisma.tenantUser.findFirst({
+      where: { tenantId, userId:id },
+        select:{
+          userId: id,
+        },
+        select:{
+          userId:true
+        }
+      });
+
+    if (!tenantUser) {
+      return res.status(404).json({ message: "User not found in tenant." });
+    }
+
     const data = {};
     if (name !== undefined) data.name = name;
     if (bio !== undefined) data.bio = bio;
     if (avatarId !== undefined) data.avatarId = avatarId;
+    if (email !== undefined) data.email = email;
+
     if (password !== undefined) {
       const hashedPassword = await bcrypt.hash(password, 10);
       data.password = hashedPassword;
     }
 
-    const update = await prisma.user.update({
-      where: { id_tenantId: { id: parseInt(id), tenantId } },
+    const updateUser = await prisma.user.update({
+      where: { id: tenantUser.userId },
       data,
+      select:{
+        id: true,
+        username: true,
+        email: true,
+        name: true,
+        bio: true,
+        avatarId: true,
+        createdAt: true,
+
+      }
     });
 
-    res.json({ message: "User updated successfully" });
+    res.json({ message: "User updated successfully", user: updateUser });
   } catch (error) {
     console.error("Update User Error:", error);
     res.status(500).json({ message: "Server Error T-US003" });
@@ -210,13 +281,13 @@ export async function deleteUser(req, res) {
         where: {
           tenantId_userId: {
             tenantId,
-            userId,
+            userId: id,
           },
         },
       });
 
       await tx.user.delete({
-        where: { id: userId },
+        where: { id: id },
       });
     });
 
